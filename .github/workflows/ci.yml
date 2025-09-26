@@ -2,7 +2,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [ main ]
 permissions:
   contents: read
 concurrency:
@@ -36,3 +36,12 @@ jobs:
 
       - name: Pre-commit (all files)
         run: pre-commit run --all-files
+  block-main-push:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Block direct pushes to main branch"
+        run: |
+          echo "ERROR: Direct pushes to the main branch are prohibited."
+          echo "Please use a pull request to merge your changes."
+          exit 1
