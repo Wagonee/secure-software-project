@@ -1,57 +1,108 @@
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from typing import List
+from uuid import UUID
 
-app = FastAPI(title="SecDev Course App", version="0.1.0")
+from fastapi import FastAPI, HTTPException, status
+
+from .models import Exercise, ExerciseBase, Set, SetBase, Workout, WorkoutBase
+
+app = FastAPI(
+    title="Workout Log API",
+    description="API для отслеживания тренировок и упражнений.",
+    version="0.1.0",
+)
+
+db_workouts: List[Workout] = []
+db_exercises: List[Exercise] = []
 
 
-class ApiError(Exception):
-    def __init__(self, code: str, message: str, status: int = 400):
-        self.code = code
-        self.message = message
-        self.status = status
+@app.get("/health", summary="Корневой эндпоинт")
+def read_root():
+    return {"message": "Welcome to Workout Log API!"}
 
 
-@app.exception_handler(ApiError)
-async def api_error_handler(request: Request, exc: ApiError):
-    return JSONResponse(
-        status_code=exc.status,
-        content={"error": {"code": exc.code, "message": exc.message}},
+@app.post(
+    "/workouts/",
+    response_model=Workout,
+    status_code=status.HTTP_201_CREATED,
+    summary="Создать новую тренировку",
+)
+def create_workout(workout_in: WorkoutBase):
+    new_workout = Workout(**workout_in.model_dump())
+    db_workouts.append(new_workout)
+    return new_workout
+
+
+@app.get(
+    "/workouts/",
+    response_model=List[Workout],
+    summary="Получить список всех тренировок",
+)
+def get_all_workouts():
+    return db_workouts
+
+
+@app.get(
+    "/workouts/{workout_id}",
+    response_model=Workout,
+    summary="Получить одну тренировку по ID",
+)
+def get_workout_by_id(workout_id: UUID):
+    for workout in db_workouts:
+        if workout.id == workout_id:
+            return workout
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="Workout not found"
     )
 
 
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    # Normalize FastAPI HTTPException into our error envelope
-    detail = exc.detail if isinstance(exc.detail, str) else "http_error"
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"error": {"code": "http_error", "message": detail}},
-    )
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-
-# Example minimal entity (for tests/demo)
-_DB = {"items": []}
-
-
-@app.post("/items")
-def create_item(name: str):
-    if not name or len(name) > 100:
-        raise ApiError(
-            code="validation_error", message="name must be 1..100 chars", status=422
+@app.post(
+    "/workouts/{workout_id}/sets",
+    response_model=Workout,
+    summary="Добавить подход в тренировку",
+)
+def add_set_to_workout(workout_id: UUID, set_in: SetBase, exercise_id: UUID):
+    workout = None
+    for w in db_workouts:
+        if w.id == workout_id:
+            workout = w
+            break
+    if not workout:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Workout not found"
         )
-    item = {"id": len(_DB["items"]) + 1, "name": name}
-    _DB["items"].append(item)
-    return item
+
+    exercise = None
+    for ex in db_exercises:
+        if ex.id == exercise_id:
+            exercise = ex
+            break
+    if not exercise:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Exercise not found to add set",
+        )
+
+    new_set = Set(**set_in.model_dump(), exercise_name=exercise.name)
+    workout.sets.append(new_set)
+    return workout
 
 
-@app.get("/items/{item_id}")
-def get_item(item_id: int):
-    for it in _DB["items"]:
-        if it["id"] == item_id:
-            return it
-    raise ApiError(code="not_found", message="item not found", status=404)
+@app.post(
+    "/exercises/",
+    response_model=Exercise,
+    status_code=status.HTTP_201_CREATED,
+    summary="Создать новое упражнение",
+)
+def create_exercise(exercise_in: ExerciseBase):
+    new_exercise = Exercise(**exercise_in.model_dump())
+    db_exercises.append(new_exercise)
+    return new_exercise
+
+
+@app.get(
+    "/exercises/",
+    response_model=List[Exercise],
+    summary="Получить список всех упражнений",
+)
+def get_all_exercises():
+    return db_exercises
