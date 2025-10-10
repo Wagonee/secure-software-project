@@ -1,8 +1,9 @@
 from typing import List
 from uuid import UUID
 
-from app.middleware import RateLimiter
 from fastapi import FastAPI, HTTPException, status
+
+from app.middleware import RateLimiter
 
 from .models import Exercise, ExerciseBase, Set, SetBase, Workout, WorkoutBase
 
