@@ -3,6 +3,8 @@ from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, status
 
+from app.middleware import RateLimiter
+
 from .models import Exercise, ExerciseBase, Set, SetBase, Workout, WorkoutBase
 
 app = FastAPI(
@@ -10,6 +12,7 @@ app = FastAPI(
     description="API для отслеживания тренировок и упражнений.",
     version="0.1.0",
 )
+app.middleware("http")(RateLimiter())
 
 db_workouts: List[Workout] = []
 db_exercises: List[Exercise] = []
