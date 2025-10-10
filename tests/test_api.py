@@ -91,3 +91,11 @@ def test_add_set_to_workout():
     assert added_set["reps"] == 10
     assert added_set["weight"] == 80.0
     assert "id" in added_set
+
+def test_rate_limiting():
+    responses = []
+    for _ in range(105):
+        response = client.post("/workouts/", 
+                             json={"workout_date": "2025-09-25"})
+        responses.append(response.status_code)    
+    assert 429 in responses
