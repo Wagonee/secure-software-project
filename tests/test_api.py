@@ -1,19 +1,34 @@
+import os
 from http import HTTPStatus
+from importlib import import_module
+from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
 
-client = TestClient(app)
+@pytest.fixture
+def client(tmp_path: Path):
+    test_db = tmp_path / "test_wagonee.db"
+    if test_db.exists():
+        try:
+            test_db.unlink()
+        except Exception:
+            pass
+
+    os.environ["DATABASE_URL"] = f"sqlite:///{test_db.as_posix()}"
+    app = import_module("app.main").app
+    with TestClient(app) as c:
+        yield c
 
 
-def test_read_health():
+def test_read_health(client):
     response = client.get("/health")
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {"message": "Welcome to Workout Log API!"}
 
 
-def test_create_exercise():
+def test_create_exercise(client):
     response = client.post(
         "/exercises/",
         json={
@@ -27,7 +42,7 @@ def test_create_exercise():
     assert "id" in data
 
 
-def test_get_all_exercises():
+def test_get_all_exercises(client):
     client.post("/exercises/", json={"name": "Жим лежа"})
 
     response = client.get("/exercises/")
@@ -38,7 +53,7 @@ def test_get_all_exercises():
     assert any(ex["name"] == "Жим лежа" for ex in data)
 
 
-def test_create_workout():
+def test_create_workout(client):
     response = client.post(
         "/workouts/",
         json={"workout_date": "2025-09-25", "note": "День ног"},
@@ -51,7 +66,7 @@ def test_create_workout():
     assert "sets" in data and isinstance(data["sets"], list)
 
 
-def test_get_workout_by_id():
+def test_get_workout_by_id(client):
     create_response = client.post("/workouts/", json={"workout_date": "2025-09-26"})
     workout_id = create_response.json()["id"]
 
@@ -62,13 +77,13 @@ def test_get_workout_by_id():
     assert data["workout_date"] == "2025-09-26"
 
 
-def test_get_workout_not_found():
+def test_get_workout_not_found(client):
     random_uuid = "a1b2c3d4-e5f6-7890-1234-567890abcdef"
     response = client.get(f"/workouts/{random_uuid}")
     assert response.status_code == HTTPStatus.NOT_FOUND
 
 
-def test_add_set_to_workout():
+def test_add_set_to_workout(client):
     exercise_res = client.post("/exercises/", json={"name": "Подтягивания"})
     exercise_id = exercise_res.json()["id"]
 
@@ -93,7 +108,7 @@ def test_add_set_to_workout():
     assert "id" in added_set
 
 
-def test_rate_limiting():
+def test_rate_limiting(client):
     responses = []
     for _ in range(105):
         response = client.post("/workouts/", json={"workout_date": "2025-09-25"})
