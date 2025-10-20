@@ -22,6 +22,7 @@ try:
     init_db()
 except Exception:
     pass
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         try:
@@ -29,6 +30,7 @@ except Exception:
         except Exception:
             pass
         yield
+
     app.router.lifespan_context = lifespan
 
 
