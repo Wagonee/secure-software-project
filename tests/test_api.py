@@ -8,8 +8,8 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture
-def client():
-    test_db = Path(__file__).parent / "test_wagonee.db"
+def client(tmp_path: Path):
+    test_db = tmp_path / "test_wagonee.db"
     if test_db.exists():
         try:
             test_db.unlink()
