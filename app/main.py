@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from typing import List
 from uuid import UUID
 
@@ -6,7 +7,6 @@ from fastapi import FastAPI, HTTPException, status
 from app import schemas, services
 from app.db import init_db
 from app.middleware import RateLimiter
-from contextlib import asynccontextmanager
 
 app = FastAPI(
     title="Workout Log API",
