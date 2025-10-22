@@ -33,7 +33,7 @@ class ExerciseRead(ExerciseBase):
 
 class WorkoutBase(BaseModel):
     workout_date: date
-    note: Optional[str] = None
+    note: Optional[str] = Field(None, max_length=1000)
 
 
 class WorkoutCreate(WorkoutBase):
