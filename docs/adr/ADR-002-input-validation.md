@@ -36,4 +36,4 @@
  - NFR-03 (валидация)
  - RISKS: R2, R4
  - Issue #15 (Pydantic validation enforcement)
- - PR: will be linked after PR creation
+ - PR #14 (p05-secure-coding → main)

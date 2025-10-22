@@ -36,4 +36,4 @@
  - RISKS: R3, R5
  - Примеры в TASK (magic-bytes пример)
  - Issue #16 (secure file handling helpers)
- - PR: will be linked after PR creation
+ - PR #14 (p05-secure-coding → main)

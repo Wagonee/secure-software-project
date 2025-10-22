@@ -22,7 +22,6 @@ def client(tmp_path: Path):
 
 
 def test_rfc7807_on_not_found(client):
-    # request a non-existing workout -> HTTP 404 produced by route
     r = client.get(
         "/workouts/a1b2c3d4-e5f6-7890-1234-567890abcdef",
         headers={"X-Forwarded-For": "127.0.0.2"},
@@ -34,7 +33,6 @@ def test_rfc7807_on_not_found(client):
 
 
 def test_validation_error_returns_problem(client):
-    # create workout with too long note (>1000 chars)
     long_note = "x" * 2000
     r = client.post(
         "/workouts/",

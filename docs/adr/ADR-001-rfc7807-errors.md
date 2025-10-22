@@ -39,4 +39,4 @@
  - NFR-03 (валидация данных)
  - RISKS: R5 (observability)
  - Issue #14 (RFC7807 implementation)
- - PR: will be linked after PR creation
+ - PR #14 (p05-secure-coding → main)

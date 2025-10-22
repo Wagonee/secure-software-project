@@ -13,7 +13,6 @@ class RateLimiter:
         self.lock = threading.Lock()
 
     async def __call__(self, request: Request, call_next):
-        # Prefer X-Forwarded-For when present (useful behind proxies and in tests)
         client_ip = request.headers.get("x-forwarded-for") or request.client.host
         now = time.time()
 
