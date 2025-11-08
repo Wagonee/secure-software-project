@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7-labs
-FROM python:3.11-slim@sha256:8d5fe1f4a958c5ee75fe3eea1c0d01c8f5ec33c167431e5c89e9fae92f28857e AS builder
+FROM python:3.11-slim@sha256:e4676722fba839e2e5cdb844a52262b43e90e56dbd55b7ad953ee3615ad7534f AS builder
 
 WORKDIR /build
 
@@ -12,7 +12,7 @@ COPY requirements.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip wheel --no-cache-dir --wheel-dir=/wheels -r requirements.txt
 
-FROM python:3.11-slim@sha256:8d5fe1f4a958c5ee75fe3eea1c0d01c8f5ec33c167431e5c89e9fae92f28857e AS runtime
+FROM python:3.11-slim@sha256:e4676722fba839e2e5cdb844a52262b43e90e56dbd55b7ad953ee3615ad7534f AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
