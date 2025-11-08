@@ -120,4 +120,3 @@ jobs:
           sleep 20
           docker inspect test-api --format='{{.State.Health.Status}}'
           docker stop test-api
-
