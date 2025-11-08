@@ -12,8 +12,8 @@ def client(tmp_path: Path):
     if test_db.exists():
         try:
             test_db.unlink()
-        except Exception:
-            pass
+        except OSError:
+            pass  # noqa: S110 - Expected in test cleanup
 
     os.environ["DATABASE_URL"] = f"sqlite:///{test_db.as_posix()}"
     app = import_module("app.main").app

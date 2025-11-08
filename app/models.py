@@ -1,5 +1,4 @@
 from datetime import date
-from typing import List, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -17,7 +16,7 @@ class Set(SetBase):
 
 class ExerciseBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
+    description: str | None = Field(None, max_length=500)
 
 
 class Exercise(ExerciseBase):
@@ -26,9 +25,9 @@ class Exercise(ExerciseBase):
 
 class WorkoutBase(BaseModel):
     workout_date: date
-    note: Optional[str] = None
+    note: str | None = None
 
 
 class Workout(WorkoutBase):
     id: UUID = Field(default_factory=uuid4)
-    sets: List[Set] = []
+    sets: list[Set] = []

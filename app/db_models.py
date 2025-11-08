@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from sqlalchemy import Column, Date, Float, ForeignKey, Integer, String
+from sqlalchemy import Column, Date, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import relationship
 
 from app.db import Base
@@ -32,7 +32,7 @@ class Set(Base):
 
     id = Column(String, primary_key=True, default=gen_uuid)
     reps = Column(Integer, nullable=False)
-    weight = Column(Float, nullable=False)
+    weight = Column(Numeric(6, 2), nullable=False)
     exercise_name = Column(String, nullable=False)
     workout_id = Column(String, ForeignKey("workouts.id"), nullable=False)
     workout = relationship("Workout", back_populates="sets")

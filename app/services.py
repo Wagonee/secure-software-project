@@ -1,5 +1,3 @@
-from typing import List
-
 from app import schemas
 from app.db import SessionLocal
 from app.repositories import ExerciseRepository, WorkoutRepository
@@ -11,19 +9,16 @@ class ExerciseService:
         try:
             repo = ExerciseRepository(db)
             ex = repo.create(name=data.name, description=data.description)
-            return schemas.ExerciseRead(
-                id=ex.id, name=ex.name, description=ex.description
-            )
+            return schemas.ExerciseRead(id=ex.id, name=ex.name, description=ex.description)
         finally:
             db.close()
 
-    def list_exercises(self) -> List[schemas.ExerciseRead]:
+    def list_exercises(self) -> list[schemas.ExerciseRead]:
         db = SessionLocal()
         try:
             items = ExerciseRepository(db).list()
             return [
-                schemas.ExerciseRead(id=i.id, name=i.name, description=i.description)
-                for i in items
+                schemas.ExerciseRead(id=i.id, name=i.name, description=i.description) for i in items
             ]
         finally:
             db.close()
@@ -34,9 +29,7 @@ class ExerciseService:
             ex = ExerciseRepository(db).get(ex_id)
             if not ex:
                 return None
-            return schemas.ExerciseRead(
-                id=ex.id, name=ex.name, description=ex.description
-            )
+            return schemas.ExerciseRead(id=ex.id, name=ex.name, description=ex.description)
         finally:
             db.close()
 
@@ -47,13 +40,11 @@ class WorkoutService:
         try:
             repo = WorkoutRepository(db)
             w = repo.create(workout_date=data.workout_date, note=data.note)
-            return schemas.WorkoutRead(
-                id=w.id, workout_date=w.workout_date, note=w.note, sets=[]
-            )
+            return schemas.WorkoutRead(id=w.id, workout_date=w.workout_date, note=w.note, sets=[])
         finally:
             db.close()
 
-    def list_workouts(self) -> List[schemas.WorkoutRead]:
+    def list_workouts(self) -> list[schemas.WorkoutRead]:
         db = SessionLocal()
         try:
             items = WorkoutRepository(db).list()
@@ -63,7 +54,7 @@ class WorkoutService:
                     schemas.SetRead(
                         id=s.id,
                         reps=s.reps,
-                        weight=s.weight,
+                        weight=float(s.weight),  # Конвертируем Decimal в float
                         exercise_name=s.exercise_name,
                     )
                     for s in w.sets
@@ -85,13 +76,14 @@ class WorkoutService:
                 return None
             sets = [
                 schemas.SetRead(
-                    id=s.id, reps=s.reps, weight=s.weight, exercise_name=s.exercise_name
+                    id=s.id,
+                    reps=s.reps,
+                    weight=float(s.weight),  # Конвертируем Decimal в float
+                    exercise_name=s.exercise_name,
                 )
                 for s in w.sets
             ]
-            return schemas.WorkoutRead(
-                id=w.id, workout_date=w.workout_date, note=w.note, sets=sets
-            )
+            return schemas.WorkoutRead(id=w.id, workout_date=w.workout_date, note=w.note, sets=sets)
         finally:
             db.close()
 
@@ -107,7 +99,10 @@ class WorkoutService:
             )
             sets = [
                 schemas.SetRead(
-                    id=s.id, reps=s.reps, weight=s.weight, exercise_name=s.exercise_name
+                    id=s.id,
+                    reps=s.reps,
+                    weight=float(s.weight),  # Конвертируем Decimal в float
+                    exercise_name=s.exercise_name,
                 )
                 for s in updated.sets
             ]
