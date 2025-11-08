@@ -5,6 +5,7 @@ on:
     branches: [ main ]
 permissions:
   contents: read
+  security-events: write
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -89,7 +90,8 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        # Upload only when we have write permissions (not from fork PRs). Still runs on push to main.
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
         with:
           sarif_file: 'trivy-results.sarif'
 
