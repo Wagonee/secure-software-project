@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
 from typing import List
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from app import schemas, services
 from app.db import init_db
@@ -16,6 +18,46 @@ app = FastAPI(
 
 
 app.middleware("http")(RateLimiter())
+
+
+def problem(
+    status_code: int,
+    title: str,
+    detail: str,
+    type_: str = "about:blank",
+    extras: dict | None = None,
+):
+    cid = str(uuid4())
+    payload = {
+        "type": type_,
+        "title": title,
+        "status": status_code,
+        "detail": detail,
+        "correlation_id": cid,
+    }
+    if extras:
+        payload.update(extras)
+    return JSONResponse(payload, status_code=status_code)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return problem(
+        status_code=exc.status_code,
+        title=exc.detail if isinstance(exc.detail, str) else "HTTP Error",
+        detail=str(exc.detail),
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # return RFC7807-like response with validation errors in detail
+    detail = exc.errors()
+    return problem(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        title="Validation Error",
+        detail=str(detail),
+    )
 
 
 try:
