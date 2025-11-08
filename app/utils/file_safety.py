@@ -1,6 +1,5 @@
 import uuid
 from pathlib import Path
-from typing import Optional, Tuple
 
 MAX_BYTES = 5_000_000
 ALLOWED = {"image/png", "image/jpeg"}
@@ -10,7 +9,7 @@ JPEG_SOI = b"\xff\xd8"
 JPEG_EOI = b"\xff\xd9"
 
 
-def sniff_image_type(data: bytes) -> Optional[str]:
+def sniff_image_type(data: bytes) -> str | None:
     if data.startswith(PNG):
         return "image/png"
     if data.startswith(JPEG_SOI) and data.endswith(JPEG_EOI):
@@ -18,7 +17,7 @@ def sniff_image_type(data: bytes) -> Optional[str]:
     return None
 
 
-def secure_save(base_dir: str, filename_hint: str, data: bytes) -> Tuple[bool, str]:
+def secure_save(base_dir: str, filename_hint: str, data: bytes) -> tuple[bool, str]:
     if len(data) > MAX_BYTES:
         return False, "too_big"
     mt = sniff_image_type(data)

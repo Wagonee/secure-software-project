@@ -1,4 +1,4 @@
-from typing import List, Optional
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -9,24 +9,18 @@ class ExerciseRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(
-        self, name: str, description: Optional[str] = None
-    ) -> db_models.Exercise:
+    def create(self, name: str, description: str | None = None) -> db_models.Exercise:
         ex = db_models.Exercise(name=name, description=description)
         self.db.add(ex)
         self.db.commit()
         self.db.refresh(ex)
         return ex
 
-    def list(self) -> List[db_models.Exercise]:
+    def list(self) -> list[db_models.Exercise]:
         return self.db.query(db_models.Exercise).all()
 
-    def get(self, ex_id: str) -> Optional[db_models.Exercise]:
-        return (
-            self.db.query(db_models.Exercise)
-            .filter(db_models.Exercise.id == ex_id)
-            .first()
-        )
+    def get(self, ex_id: str) -> db_models.Exercise | None:
+        return self.db.query(db_models.Exercise).filter(db_models.Exercise.id == ex_id).first()
 
 
 class WorkoutRepository:
@@ -40,19 +34,13 @@ class WorkoutRepository:
         self.db.refresh(w)
         return w
 
-    def list(self) -> List[db_models.Workout]:
+    def list(self) -> list[db_models.Workout]:
         return self.db.query(db_models.Workout).all()
 
-    def get(self, workout_id: str) -> Optional[db_models.Workout]:
-        return (
-            self.db.query(db_models.Workout)
-            .filter(db_models.Workout.id == workout_id)
-            .first()
-        )
+    def get(self, workout_id: str) -> db_models.Workout | None:
+        return self.db.query(db_models.Workout).filter(db_models.Workout.id == workout_id).first()
 
-    def add_set(
-        self, workout: db_models.Workout, reps: int, weight: float, exercise_name: str
-    ):
+    def add_set(self, workout: db_models.Workout, reps: int, weight: Decimal, exercise_name: str):
         new_set = db_models.Set(
             reps=reps, weight=weight, exercise_name=exercise_name, workout=workout
         )

@@ -13,8 +13,8 @@ def client(tmp_path: Path):
     if test_db.exists():
         try:
             test_db.unlink()
-        except Exception:
-            pass
+        except OSError:
+            pass  # noqa: S110 - Expected in test cleanup
 
     os.environ["DATABASE_URL"] = f"sqlite:///{test_db.as_posix()}"
     app = import_module("app.main").app
@@ -109,8 +109,10 @@ def test_add_set_to_workout(client):
 
 
 def test_rate_limiting(client):
+    # Лимит увеличен до 1000 запросов в минуту для поддержки тестов
+    # Проверяем, что limit работает при превышении
     responses = []
-    for _ in range(105):
+    for _ in range(1005):
         response = client.post("/workouts/", json={"workout_date": "2025-09-25"})
         responses.append(response.status_code)
     assert 429 in responses
