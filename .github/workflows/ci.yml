@@ -34,7 +34,7 @@ jobs:
       - name: Security Checks
         run: |
           bandit -r app/ -c .bandit || true
-          
+
       - name: Type Checking
         run: |
           mypy app/ || true
