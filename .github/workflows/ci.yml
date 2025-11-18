@@ -13,13 +13,20 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
           cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
       - name: Install dependencies
         run: |
@@ -41,11 +48,41 @@ jobs:
           mypy app/ || true
 
       - name: Tests
-        run: pytest -v --cov=app --cov-report=term --cov-report=xml
+        env:
+          # Example: use secrets/vars for test configuration
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL || 'sqlite:///./test.db' }}
+          SECRET_KEY: ${{ secrets.TEST_SECRET_KEY || 'test-secret-key-do-not-use-in-production' }}
+          ENVIRONMENT: test
+        run: |
+          mkdir -p reports
+          pytest -v --cov=app --cov-report=term --cov-report=xml --cov-report=html --junitxml=reports/junit.xml
 
       - name: Coverage Check
         run: |
           coverage report --fail-under=70 || true
+
+      - name: Build wheel
+        run: |
+          pip install build
+          python -m build --wheel
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-py${{ matrix.python-version }}
+          path: |
+            reports/
+            htmlcov/
+            coverage.xml
+          retention-days: 30
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-py${{ matrix.python-version }}
+          path: dist/*.whl
+          retention-days: 30
 
       - name: Pre-commit (all files)
         run: pre-commit run --all-files
@@ -122,3 +159,38 @@ jobs:
           sleep 20
           docker inspect test-api --format='{{.State.Health.Status}}'
           docker stop test-api
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build, docker-build-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheel-py*
+          merge-multiple: true
+          path: dist/
+
+      - name: Simulate deployment to staging
+        env:
+          DEPLOY_ENV: staging
+          API_VERSION: ${{ github.sha }}
+        run: |
+          echo "🚀 Deploying to staging environment..."
+          echo "Environment: $DEPLOY_ENV"
+          echo "Version: $API_VERSION"
+          echo "Artifacts:"
+          ls -lh dist/
+          echo "✅ Deployment simulation completed"
+          echo "Would deploy to: https://staging.example.com"
+
+      - name: Health check (simulated)
+        run: |
+          echo "Running health checks on staging..."
+          echo "✅ API is healthy"
+          echo "✅ Database connection OK"
+          echo "✅ All services operational"
