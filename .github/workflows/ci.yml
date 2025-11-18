@@ -1,57 +1,117 @@
 name: CI
+
 on:
-  pull_request:
   push:
-    branches: [ main ]
+    branches:
+      - main
+  pull_request:
+
 permissions:
   contents: read
   security-events: write
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+env:
+  REPORTS_ROOT: reports
 
-      - uses: actions/setup-python@v5
+jobs:
+  lint-and-test:
+    name: Linters & tests (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+    env:
+      REPORTS_SUBDIR: ${{ env.REPORTS_ROOT }}/${{ matrix.os }}-py${{ matrix.python-version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: "pip"
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.txt
+            requirements-dev.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Lint & Format
-        run: |
-          ruff check --output-format=github .
-          black --check .
-          isort --check-only .
+      - name: Create report directories
+        run: python -c "import pathlib; pathlib.Path(r'${{ env.REPORTS_SUBDIR }}').mkdir(parents=True, exist_ok=True)"
 
-      - name: Security Checks
-        run: |
-          bandit -r app/ -c .bandit || true
+      - name: Ruff
+        run: ruff check --output-format=github .
 
-      - name: Type Checking
-        run: |
-          mypy app/ || true
+      - name: Black
+        run: black --check .
 
-      - name: Tests
-        run: pytest -v --cov=app --cov-report=term --cov-report=xml
+      - name: isort
+        run: isort --check-only .
 
-      - name: Coverage Check
+      - name: Pytest
+        run: >
+          pytest -q --maxfail=1 --disable-warnings
+          --junitxml="${{ env.REPORTS_SUBDIR }}/junit.xml"
+          --cov=app --cov-report=term
+          --cov-report=xml:"${{ env.REPORTS_SUBDIR }}/coverage.xml"
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-py${{ matrix.python-version }}-reports
+          path: ${{ env.REPORTS_SUBDIR }}
+          if-no-files-found: ignore
+          retention-days: 14
+
+  static-analysis:
+    name: Security & typing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: lint-and-test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
         run: |
-          coverage report --fail-under=70 || true
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Bandit
+        run: bandit -r app/ -c .bandit
+
+      - name: Mypy
+        run: mypy app/
 
       - name: Pre-commit (all files)
         run: pre-commit run --all-files
 
   docker-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -63,6 +123,7 @@ jobs:
 
   docker-build-scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: docker-lint
     steps:
       - uses: actions/checkout@v4
@@ -80,32 +141,31 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+      - name: Run Trivy vulnerability scanner (SARIF)
+        uses: aquasecurity/trivy-action@v0.20.0
         with:
-          image-ref: 'workout-log-api:latest'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
+          image-ref: workout-log-api:latest
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
 
       - name: Upload Trivy results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        # Upload only when we have write permissions (not from fork PRs). Still runs on push to main.
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+        uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: trivy-results.sarif
 
-      - name: Run Trivy vulnerability scanner (table output)
-        uses: aquasecurity/trivy-action@master
+      - name: Run Trivy vulnerability scanner (table)
+        uses: aquasecurity/trivy-action@v0.20.0
         with:
-          image-ref: 'workout-log-api:latest'
-          format: 'table'
-          output: 'trivy-report.txt'
-          severity: 'CRITICAL,HIGH,MEDIUM'
+          image-ref: workout-log-api:latest
+          format: table
+          output: trivy-report.txt
+          severity: CRITICAL,HIGH,MEDIUM
 
       - name: Upload Trivy report as artifact
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: trivy-security-report
           path: trivy-report.txt
@@ -122,3 +182,65 @@ jobs:
           sleep 20
           docker inspect test-api --format='{{.State.Health.Status}}'
           docker stop test-api
+          docker rm test-api
+
+  deploy-dry-run:
+    name: Stage deploy (dry-run)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - lint-and-test
+      - static-analysis
+      - docker-build-scan
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.preview_url }}
+    env:
+      STAGING_DEPLOY_ENDPOINT: ${{ vars.STAGING_DEPLOY_ENDPOINT || 'https://httpbin.org/post' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Render deployment payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, time
+
+          payload = {
+              "app": "workout-log-api",
+              "sha": os.environ.get("GITHUB_SHA"),
+              "ref": os.environ.get("GITHUB_REF"),
+              "environment": "staging",
+              "requested_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+          }
+
+          with open('deploy-request.json', 'w', encoding='utf-8') as fp:
+              json.dump(payload, fp, indent=2)
+          PY
+
+      - name: Trigger mock deploy
+        id: deploy
+        shell: bash
+        env:
+          DEPLOY_TOKEN: ${{ secrets.STAGING_DEPLOY_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -sS -X POST "$STAGING_DEPLOY_ENDPOINT" \
+            -H "Authorization: Bearer ${DEPLOY_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data @deploy-request.json > deploy-response.json
+          preview_url="https://staging.workout-log.local/${GITHUB_SHA::7}"
+          echo "preview_url=${preview_url}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload deployment log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-deploy-log
+          path: |
+            deploy-request.json
+            deploy-response.json
+          if-no-files-found: error
+          retention-days: 14
