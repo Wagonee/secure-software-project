@@ -1,0 +1,149 @@
+rules:
+  - id: py-unsafe-html-echo
+    languages: [python]
+    message: "Potentially unsafe output of user data in HTMLResponse without escaping"
+    severity: WARNING
+    patterns:
+      - pattern: |
+          HTMLResponse(f"...{$X}...")
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+      confidence: MEDIUM
+      likelihood: MEDIUM
+      impact: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/xss/
+
+  - id: py-sql-injection-risk
+    languages: [python]
+    message: "Potential SQL injection - avoid string formatting in SQL queries"
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $DB.execute(f"...")
+          - pattern: |
+              $DB.execute("..." % ...)
+          - pattern: |
+              $DB.execute("..." + ...)
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: CRITICAL
+      references:
+        - https://owasp.org/www-community/attacks/SQL_Injection
+
+  - id: py-hardcoded-credentials
+    languages: [python]
+    message: "Hardcoded credentials detected - use environment variables or secure vault"
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: |
+              password = "..."
+          - pattern: |
+              api_key = "..."
+          - pattern: |
+              secret = "..."
+          - pattern: |
+              token = "..."
+      - pattern-not: |
+          $VAR = ""
+      - pattern-not: |
+          $VAR = "***"
+      - pattern-not: |
+          $VAR = "placeholder"
+      - pattern-not: |
+          $VAR = "test"
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: CRITICAL
+
+  - id: py-unsafe-deserialization
+    languages: [python]
+    message: "Unsafe deserialization with pickle - can lead to RCE"
+    severity: ERROR
+    pattern-either:
+      - pattern: pickle.loads(...)
+      - pattern: pickle.load(...)
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      confidence: HIGH
+      likelihood: MEDIUM
+      impact: CRITICAL
+      references:
+        - https://owasp.org/www-community/vulnerabilities/Deserialization_of_untrusted_data
+
+  - id: py-path-traversal-risk
+    languages: [python]
+    message: "Path traversal risk - validate and sanitize file paths"
+    severity: WARNING
+    pattern-either:
+      - pattern: |
+          open($USER_INPUT, ...)
+      - pattern: |
+          pathlib.Path($USER_INPUT)
+    pattern-not-inside: |
+      if ... in ...:
+          ...
+    metadata:
+      category: security
+      cwe: "CWE-22: Path Traversal"
+      confidence: MEDIUM
+      likelihood: MEDIUM
+      impact: HIGH
+
+  - id: py-debug-enabled-production
+    languages: [python]
+    message: "Debug mode should not be enabled in production"
+    severity: WARNING
+    pattern-either:
+      - pattern: |
+          app.debug = True
+      - pattern: |
+          DEBUG = True
+      - pattern: |
+          debug=True
+    metadata:
+      category: security
+      cwe: "CWE-489: Active Debug Code"
+      confidence: MEDIUM
+      likelihood: LOW
+      impact: MEDIUM
+
+  - id: py-unsafe-eval
+    languages: [python]
+    message: "Use of eval() is dangerous and can lead to code injection"
+    severity: ERROR
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+    metadata:
+      category: security
+      cwe: "CWE-95: Code Injection"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: CRITICAL
+      references:
+        - https://owasp.org/www-community/attacks/Code_Injection
+
+  - id: py-session-without-secure-flag
+    languages: [python]
+    message: "Session cookie should have secure flag set"
+    severity: WARNING
+    patterns:
+      - pattern: |
+          $SESSION.cookie_secure = False
+    metadata:
+      category: security
+      cwe: "CWE-614: Sensitive Cookie in HTTPS Session Without 'Secure' Attribute"
+      confidence: HIGH
+      likelihood: MEDIUM
+      impact: MEDIUM

@@ -1,0 +1,72 @@
+title = "Gitleaks config for secure-software-project"
+
+[extend]
+# Use default Gitleaks rules
+useDefault = true
+
+[allowlist]
+description = "Allowlist for false positives and non-sensitive patterns"
+
+# Paths to ignore
+paths = [
+  # Evidence and test artifacts
+  '''EVIDENCE/''',
+  '''tests/''',
+  '''\.pytest_cache/''',
+  '''__pycache__/''',
+
+  # Dependencies and build artifacts
+  '''\.venv/''',
+  '''\.git/''',
+  '''\.mypy_cache/''',
+  '''\.ruff_cache/''',
+
+  # Example and documentation files
+  '''\.env\.example''',
+  '''README\.md''',
+  '''docs/''',
+  '''P09/''',
+  '''P10/''',
+]
+
+# Commits to ignore (if needed)
+commits = []
+
+# Regex patterns for false positives
+regexes = [
+  # Test secrets
+  '''TEST_SECRET_DO_NOT_USE''',
+  '''test_api_key''',
+  '''dummy_password''',
+
+  # Logging redaction patterns (not actual secrets)
+  '''"password":"\*\*\*"''',
+  '''"token":"\*\*\*"''',
+  '''"api_key":"\*\*\*"''',
+  '''"secret":"\*\*\*"''',
+
+  # UUID patterns that might look like secrets
+  '''[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}''',
+
+  # Example/placeholder patterns
+  '''your-api-key-here''',
+  '''<your.*>''',
+  '''example\.com''',
+  '''localhost''',
+]
+
+# Stop words - ignore lines containing these
+stopwords = [
+  '''EXAMPLE''',
+  '''example''',
+  '''TODO''',
+  '''FIXME''',
+]
+
+[[allowlist.regexTarget]]
+regex = '''re\.compile\(r.*\)'''
+target = "match"
+
+[[allowlist.regexTarget]]
+regex = '''pattern.*=.*'''
+target = "match"
