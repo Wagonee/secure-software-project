@@ -14,13 +14,13 @@ paths = [
   '''tests/''',
   '''\.pytest_cache/''',
   '''__pycache__/''',
-  
+
   # Dependencies and build artifacts
   '''\.venv/''',
   '''\.git/''',
   '''\.mypy_cache/''',
   '''\.ruff_cache/''',
-  
+
   # Example and documentation files
   '''\.env\.example''',
   '''README\.md''',
@@ -38,16 +38,16 @@ regexes = [
   '''TEST_SECRET_DO_NOT_USE''',
   '''test_api_key''',
   '''dummy_password''',
-  
+
   # Logging redaction patterns (not actual secrets)
   '''"password":"\*\*\*"''',
   '''"token":"\*\*\*"''',
   '''"api_key":"\*\*\*"''',
   '''"secret":"\*\*\*"''',
-  
+
   # UUID patterns that might look like secrets
   '''[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}''',
-  
+
   # Example/placeholder patterns
   '''your-api-key-here''',
   '''<your.*>''',
