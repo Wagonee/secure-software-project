@@ -1,0 +1,22 @@
+# Hadolint configuration for P12
+# Расширенная конфигурация для проверки Dockerfile
+
+ignored:
+  # DL3008: Pin versions in apt-get install (упрощаем для dev-зависимостей)
+  - DL3008
+
+trustedRegistries:
+  - docker.io
+
+override:
+  error:
+    - DL3001  # Использование sudo
+    - DL3002  # Последний USER должен быть non-root
+    - DL3020  # COPY вместо ADD для локальных файлов
+  warning:
+    - DL3042  # Избегать использования cache без --no-cache
+    - DL3003  # WORKDIR вместо cd
+  info:
+    - DL3032  # Yum update/upgrade
+  style:
+    - DL3015  # Избегать yum clean all

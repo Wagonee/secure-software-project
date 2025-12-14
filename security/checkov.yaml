@@ -1,0 +1,19 @@
+# Checkov configuration for P12
+# Проверка IaC манифестов (K8s, Terraform, Docker Compose)
+
+quiet: false
+compact: true
+framework:
+  - kubernetes
+  - terraform
+  - dockerfile
+  - docker-compose
+
+skip-check: []
+# Можно добавить исключения по мере необходимости:
+# skip-check:
+#   - CKV_K8S_8  # Example: skip specific check
+
+# Включаем проверку на секреты в манифестах
+download-external-modules: false
+evaluate-variables: true
